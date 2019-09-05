@@ -1,7 +1,7 @@
 # review basic Python
 
 import numpy as np
-import sys
+import os, sys
 
 # Euclidean distance
 def l2(x, y):
@@ -73,6 +73,8 @@ def broadcast(x, y):
 
 
 def main():
+    print('Current running script is: {}\n \
+            running at {}'.format(__file__, os.path.abspath(__file__)))
     x = np.array([0, 3, 5])
     y = np.array([4, 5, 5])
     print(l2(x, y))
