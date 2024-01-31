@@ -15,7 +15,12 @@ class GNN(nn.Module):
         x = torch.matmul(adj, x)
         x = self.linear2(x)
         return x
-    
+
+
+# load data with pytorch dataset
+# https://pytorch.org/tutorials/beginner/data_loading_tutorial.html
+
+
 
 if __name__ == '__main__':
     x = torch.randn(10, 8)
@@ -24,3 +29,8 @@ if __name__ == '__main__':
     out = model(x, adj)
     print(out)
  
+
+od = OrderedDict()
+
+for (k, v) in od.items():
+    print(k, v)
