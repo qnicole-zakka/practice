@@ -1,16 +1,4 @@
 
-class _Loss(Module):
-    reduction: str
-
-    def __init__(self, size_average=None, reduce=None, reduction: str = 'mean') -> None:
-        super().__init__()
-        if size_average is not None or reduce is not None:
-            self.reduction: str = _Reduction.legacy_get_string(size_average, reduce)
-        else:
-            self.reduction = reduction
-
-
-
 def phi(x: torch.Tensor, y: torch.Tensor, dim: int, tau: float) -> torch.Tensor:
     """Compute the cosine similarity between two tensors.
 
@@ -24,32 +12,6 @@ def phi(x: torch.Tensor, y: torch.Tensor, dim: int, tau: float) -> torch.Tensor:
         torch.Tensor: The cosine similarity between the two tensors.
     """
     return torch.exp(F.cosine_similarity(x, y, dim=dim) / tau)
-
-
-class InfoNCELoss(nn.Module):
-    """InfoNCE loss function for contrastive learning."""
-    __constants__ = ['reduction']
-
-    def __init__(self, reduction='mean'):
-        """Initialize the loss function."""
-        super().__init__(reduction=reduction)
-
-    def forward(self, query, positive, negatives):
-        """Compute the loss.
-
-        Args:
-            query (torch.Tensor): The query embedding.
-            positive (torch.Tensor): The positive document embedding.
-            negatives (torch.Tensor): The negative document embedding.
-
-        Returns:
-            torch.Tensor: The loss value.
-        """
-        return info_nce(query,
-                        positive,
-                        negatives,
-                        1, self.reduction)
-        # TODO: check dimension through triplet loss, may be similar
 
 
 def info_nce(queries: torch.Tensor, positives: torch.Tensor,
@@ -66,19 +28,52 @@ def info_nce(queries: torch.Tensor, positives: torch.Tensor,
     Returns:
         torch.Tensor: The InfoNCE loss.
     """
-    numerator_logits = F.cosine_similarity(queries, positives, dim=1)  # B
-    numerator_vals = torch.exp(numerator_logits / temp)
+    numerator_vals = phi(queries, positives, 1, temp) #B
     denominator = torch.cat((positives, negatives), dim=0)
-    denominator_logits = F.cosine_similarity(queries.unsqueeze(1),
-                                             denominator,
-                                             dim=2)  # (B, Bx2)
-    denominator_vals = torch.sum(torch.exp(denominator_logits / temp),
-                                 dim=-1)  # (B
+    denominator_vals = torch.sum(phi(queries.unsqueeze(1), denominator, 2, temp), dim=-1) # (B)
     losses = -torch.log(numerator_vals / denominator_vals)
     if reduction == 'mean':
         return losses.mean()
     else:
         raise ValueError(f"Loss reduction {reduction} not supported.")
+
+
+class InfoNCELoss(nn.Module):
+    """InfoNCE loss function for contrastive learning."""
+    __constants__ = ['reduction']
+    tau: float
+
+    def __init__(self, reduction='mean', tau=1):
+        """Initialize the loss function."""
+        super().__init__(reduction=reduction)
+        self.tau = tau
+
+    def forward(self, query, positive, negatives):
+        """Compute the loss.
+
+        Args:
+            query (torch.Tensor): The query embedding.
+            positive (torch.Tensor): The positive document embedding.
+            negatives (torch.Tensor): The negative document embedding.
+
+        Returns:
+            torch.Tensor: The loss value.
+        """
+        return info_nce(query,
+                        positive,
+                        negatives,
+                        self.tau, self.reduction)
+    
+
+class _Loss(Module):
+    reduction: str
+
+    def __init__(self, size_average=None, reduce=None, reduction: str = 'mean') -> None:
+        super().__init__()
+        if size_average is not None or reduce is not None:
+            self.reduction: str = _Reduction.legacy_get_string(size_average, reduce)
+        else:
+            self.reduction = reduction
 
 
 class TripletMarginLoss(_Loss):
